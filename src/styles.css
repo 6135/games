@@ -220,3 +220,11 @@ h4 { font-size: 0.85rem; margin: 0 0 8px; color: var(--muted); }
 .sea-cell--hit { background: #6b2b2b; border-color: var(--bad); color: #fff; }
 .sea-cell--sunk { background: #3a1c1c; border-color: #6b2b2b; }
 .sea-cell--pending { box-shadow: 0 0 0 2px var(--accent); }
+.sea--placing .sea-cell { touch-action: manipulation; }
+.sea-cell--preview { background: #1d4a7a; border-color: var(--accent); }
+.sea-cell--blocked { background: #4a2323; border-color: var(--bad); }
+.naval__ships { display: flex; gap: 6px; flex-wrap: wrap; }
+.naval__ship { display: inline-flex; gap: 2px; align-items: center; padding: 6px 8px; }
+.naval__ship span { width: 10px; height: 10px; border-radius: 2px; background: #6d7888; }
+.naval__ship--picked { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.naval__ship--placed { opacity: 0.35; }

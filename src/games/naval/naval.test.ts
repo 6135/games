@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerFor, commitOf, FLEET, randomLayout, validLayout, verify } from './fleet'
+import { answerFor, canPlace, commitOf, FLEET, randomLayout, shipCells, validLayout, verify } from './fleet'
 import { answer, createRound, markReady, shoot } from './rules'
 import type { Layout } from './types'
 
@@ -13,6 +13,14 @@ describe('the fleet', () => {
   it('refuses ships that touch', () => {
     const touching: Layout = [[0, 1, 2, 3, 4], [10, 11, 12, 13], [30, 31, 32], [50, 51, 52], [70, 71]]
     expect(validLayout(touching)).toBe(false)
+  })
+
+  it('places a ship by hand only where it fits and touches nothing', () => {
+    const layout: Layout = [[0, 1, 2, 3, 4]]
+    expect(shipCells(10, 8, 3, false)).toBeNull()
+    expect(canPlace(layout, shipCells(10, 20, 4, false))).toBe(true)
+    expect(canPlace(layout, shipCells(10, 15, 3, true))).toBe(false)
+    expect(canPlace(layout, shipCells(10, 3, 2, true))).toBe(false)
   })
 
   it('catches a false miss at the reveal', async () => {
