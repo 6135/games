@@ -3,11 +3,11 @@
 import { RoomShell } from '../../core/ui/RoomShell'
 import { PlayerList } from '../../core/ui/PlayerList'
 import { HostPanel } from '../../core/ui/HostPanel'
+import { BoardHistory } from '../../core/ui/BoardHistory'
 import { gameClient, hostApi } from '../../core/session'
 import { useGameStore, useRoster, useRound } from '../../core/store'
 import { useCues } from '../../core/ui/useCues'
 import { Grid } from './Grid'
-import { History } from './History'
 import { cuesFor } from './cues'
 import { seatColor } from '../../core/ui/seats'
 import { gridSize, MAX_PLAYERS, MIN_PLAYERS } from './rules'
@@ -53,7 +53,7 @@ export default function GaloRoom() {
       roster={roster}
       title="Galo"
       lobbyHint="A grelha cresce com o número de jogadores."
-      history={(onClose) => <History roster={roster} onClose={onClose} />}
+      history={(onClose) => <BoardHistory history={roster.history} onClose={onClose} />}
       side={
         <>
           <PlayerList

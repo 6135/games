@@ -26,7 +26,7 @@ function neighbours(size: number, cell: number): number[] {
 }
 
 /** The cells a ship of this length takes from `start`, or null when it leaves the sea. */
-function shipCells(size: number, start: number, length: number, vertical: boolean): number[] | null {
+export function shipCells(size: number, start: number, length: number, vertical: boolean): number[] | null {
   const r = Math.floor(start / size)
   const c = start % size
   if (vertical ? r + length > size : c + length > size) return null
@@ -62,6 +62,14 @@ export function randomLayout(
     if (ok) return layout
   }
   throw new Error('no layout fits')
+}
+
+/** True when a new ship on `cells` would not overlap or touch any ship already in `layout`. */
+export function canPlace(layout: Layout, cells: readonly number[] | null, size = SIZE): boolean {
+  if (!cells || cells.length === 0) return false
+  if (cells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= size * size)) return false
+  const taken = new Set(layout.flat())
+  return cells.every((cell) => !taken.has(cell) && !neighbours(size, cell).some((near) => taken.has(near)))
 }
 
 /** True when the layout is the fleet, straight, inside the sea, with no ship touching another. */

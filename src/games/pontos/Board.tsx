@@ -60,7 +60,8 @@ export function Board({ round, players, order, canPlay, onPlay }: Props) {
     }
   }
 
-  const track = `repeat(${size}, 10px 1fr) 10px`
+  // The line track width comes from the stylesheet, so a line stays wide enough to tap.
+  const track = `repeat(${size}, var(--edge) 1fr) var(--edge)`
   return (
     <div
       className={canPlay ? 'dots dots--mine' : 'dots'}

@@ -8,7 +8,7 @@ import { BoardHistory } from '../../core/ui/BoardHistory'
 import { gameClient, hostApi } from '../../core/session'
 import { useGameStore, useRoster, useRound } from '../../core/store'
 import { useCues } from '../../core/ui/useCues'
-import { randomLayout } from './fleet'
+import { canPlace, FLEET, randomLayout, shipCells, SIZE, validLayout } from './fleet'
 import { MAX_PLAYERS, MIN_PLAYERS } from './rules'
 import { Sea } from './Sea'
 import { cuesFor } from './cues'
@@ -21,17 +21,85 @@ const VERDICT: Record<string, string> = {
   missing: 'não revelou a frota',
 }
 
+/** One slot per ship of the fleet, in fleet order. A null slot is not placed yet. */
+type Slots = (number[] | null)[]
+
+/** The cells a ship would take from `start`, cut at the edge of the sea. */
+function reach(start: number, length: number, vertical: boolean): number[] {
+  const r = Math.floor(start / SIZE)
+  const c = start % SIZE
+  const out: number[] = []
+  for (let i = 0; i < length; i += 1) {
+    if (vertical ? r + i < SIZE : c + i < SIZE) out.push(vertical ? start + i * SIZE : start + i)
+  }
+  return out
+}
+
 export default function NavalRoom() {
   const identity = useGameStore((state) => state.identity)
   const roster = useRoster<RoomState>()
   const stored = useRound<RoundState>()
   const link = useGameStore((state) => state.link)
-  const [draft, setDraft] = useState<Layout>(() => randomLayout())
+  const [slots, setSlots] = useState<Slots>(() => randomLayout())
+  const [picked, setPicked] = useState<number | null>(null)
+  const [vertical, setVertical] = useState(false)
+  const [hover, setHover] = useState<number | null>(null)
+  const [note, setNote] = useState('')
   useCues(identity?.playerId ?? '', cuesFor)
 
   const roundId = stored?.roundId
   // A new round starts with a new random fleet.
-  useEffect(() => setDraft(randomLayout()), [roundId])
+  useEffect(() => {
+    setSlots(randomLayout())
+    setPicked(null)
+    setNote('')
+  }, [roundId])
+
+  const draft: Layout = slots.filter((ship): ship is number[] => ship !== null)
+  const complete = slots.every((ship) => ship !== null) && validLayout(draft)
+  const pickedLength = picked === null ? null : FLEET[picked]!
+  const preview = hover === null || pickedLength === null ? null : reach(hover, pickedLength, vertical)
+  const previewOk =
+    hover !== null && pickedLength !== null && canPlace(draft, shipCells(SIZE, hover, pickedLength, vertical))
+
+  const shuffle = () => {
+    setSlots(randomLayout())
+    setPicked(null)
+    setNote('')
+  }
+  const clear = () => {
+    setSlots(FLEET.map(() => null))
+    setPicked(0)
+    setNote('')
+  }
+  const place = (cell: number) => {
+    // A tap on a placed ship picks it up again.
+    const owner = slots.findIndex((ship) => ship?.includes(cell))
+    if (owner >= 0) {
+      setSlots(slots.map((ship, index) => (index === owner ? null : ship)))
+      setPicked(owner)
+      setHover(null)
+      setNote('')
+      return
+    }
+    if (picked === null || pickedLength === null) {
+      setNote('Escolha primeiro um navio.')
+      return
+    }
+    const cells = shipCells(SIZE, cell, pickedLength, vertical)
+    if (!canPlace(draft, cells)) {
+      setHover(cell)
+      setNote('Aí não cabe: o navio sai do mar ou toca noutro.')
+      return
+    }
+    const next = slots.map((ship, index) => (index === picked ? cells : ship))
+    setSlots(next)
+    // Pick the next ship still waiting, so a phone needs one tap per ship.
+    const waiting = next.findIndex((ship) => ship === null)
+    setPicked(waiting >= 0 ? waiting : null)
+    setHover(null)
+    setNote('')
+  }
 
   if (!identity || !roster) {
     return (
@@ -113,15 +181,64 @@ export default function NavalRoom() {
 
           {round.phase === 'placing' && seated && !committed && round.seas[me]?.alive && (
             <div className="naval__placing">
-              <Sea size={round.size} ships={draft} label="A sua frota" />
+              <div className="naval__ships" role="group" aria-label="Navios">
+                {FLEET.map((length, index) => {
+                  const placed = slots[index] !== null
+                  const classes = ['naval__ship']
+                  if (placed) classes.push('naval__ship--placed')
+                  if (picked === index) classes.push('naval__ship--picked')
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      className={classes.join(' ')}
+                      disabled={placed}
+                      aria-pressed={picked === index}
+                      aria-label={`Navio de ${length}${placed ? ' (colocado)' : ''}`}
+                      onClick={() => {
+                        setPicked(index)
+                        setNote('')
+                      }}
+                    >
+                      {Array.from({ length }, (_, part) => (
+                        <span key={part} />
+                      ))}
+                    </button>
+                  )
+                })}
+                <button type="button" onClick={() => setVertical(!vertical)}>
+                  Rodar ({vertical ? 'vertical' : 'horizontal'})
+                </button>
+              </div>
+              <Sea
+                size={round.size}
+                ships={draft}
+                label="A sua frota"
+                placing
+                preview={preview}
+                previewOk={previewOk}
+                onPlace={place}
+                onHover={setHover}
+              />
+              <p className={note ? 'error' : 'hint'} aria-live="polite">
+                {note ||
+                  (picked !== null
+                    ? `Toque numa casa para pôr o navio de ${pickedLength} a partir dela. Toque num navio para o levantar.`
+                    : complete
+                      ? 'Frota completa. Toque num navio para o levantar.'
+                      : 'Escolha um navio.')}
+              </p>
               <div className="actions">
-                <button type="button" onClick={() => setDraft(randomLayout())}>
+                <button type="button" onClick={shuffle}>
                   Baralhar
+                </button>
+                <button type="button" onClick={clear}>
+                  Limpar
                 </button>
                 <button
                   type="button"
                   className="primary"
-                  disabled={blocked}
+                  disabled={blocked || !complete}
                   onClick={() => void client?.ready(draft)}
                 >
                   Pronto

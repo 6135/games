@@ -27,11 +27,20 @@ await new Promise((resolve) => http.listen(BROKER_PORT, resolve))
 const preview = spawn('npx', ['vite', 'preview', '--port', String(APP_PORT), '--strictPort'], {
   // A pipe held open by the child would block the caller after this exits.
   stdio: 'ignore',
+  // Its own process group, so one kill stops npx and the vite server it starts.
+  detached: true,
 })
-process.on('exit', () => preview.kill('SIGKILL'))
+function stopPreview() {
+  try {
+    process.kill(-preview.pid, 'SIGKILL')
+  } catch {
+    /* already gone */
+  }
+}
+process.on('exit', () => stopPreview())
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    preview.kill('SIGKILL')
+    stopPreview()
     process.exit(1)
   })
 }
@@ -153,7 +162,7 @@ try {
   failures.push(`threw: ${error.message}`)
 } finally {
   await browser.close()
-  preview.kill('SIGKILL')
+  stopPreview()
   http.close()
   broker.close()
 }
