@@ -1,59 +1,16 @@
 /** Protocol payloads and game state. */
 
-import type { Player, RoomStatus } from '../../core/types'
+import type { BoardRoom } from '../../core/boardRoom'
 
-export type {
-  BotLevel,
-  JoinRequest,
-  Player,
-  Presence,
-  RoomAd,
-  RoomMeta,
-  RoomStatus,
-} from '../../core/types'
+export type { BotLevel, Player } from '../../core/types'
 
-export type RoomConfig = {
+export type GaloConfig = {
   /** Marks in a row that win. Clamped to the grid size at round start. */
   winLength: number
-  /** Optional limit: the game ends after each player opened one round. */
-  onePassLimit: boolean
-}
-
-export type LastRound = {
-  winnerId: string | null
-  draw: boolean
-  voided: boolean
-}
-
-/** One finished round, kept for the history screen. */
-export type RoundRecord = {
-  n: number
-  size: number
-  moves: number
-  starterName: string
-  winnerId: string | null
-  winnerName: string | null
-  draw: boolean
-  voided: boolean
 }
 
 /** Retained on `roster`. Published by the host. */
-export type RoomState = {
-  v: number
-  seq: number
-  ts: number
-  src: string
-  status: RoomStatus
-  hostId: string
-  hostPlayerId: string
-  config: RoomConfig
-  players: Player[]
-  order: string[]
-  roundNumber: number
-  lastRound: LastRound | null
-  /** Newest last. Capped, because the roster travels on every change. */
-  history: RoundRecord[]
-}
+export type RoomState = BoardRoom<GaloConfig>
 
 export type RoundOutcome = 'running' | 'won' | 'draw'
 
