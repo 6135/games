@@ -20,11 +20,15 @@ export function PlayerList({ players, turnPlayerId, hostPlayerId, meId, masterId
       {ranking(players).map((player) => (
         <li key={player.id} className={player.id === meId ? 'player player--me' : 'player'}>
           <span className={player.connected ? 'dot dot--on' : 'dot dot--off'} aria-hidden />
-          {colorOf && (
-            <span className="player__symbol" style={{ color: colorOf(player.id) }}>
-              {player.symbol || '·'}
-            </span>
-          )}
+          {colorOf &&
+            (player.symbol ? (
+              <span className="player__symbol" style={{ color: colorOf(player.id) }}>
+                {player.symbol}
+              </span>
+            ) : (
+              // Pontos has no symbols: a swatch of the seat colour, empty before the order exists.
+              <span className="player__swatch" style={{ background: colorOf(player.id) }} aria-hidden />
+            ))}
           <span className="player__name">{player.name}</span>
           {player.id === hostPlayerId && <span className="tag">anfitrião</span>}
           {player.bot && <span className="tag tag--bot">bot</span>}
