@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "broker": "node scripts/dev-broker.mjs",
-    "e2e": "node scripts/e2e-forca.mjs && node scripts/e2e-galo.mjs",
+    "e2e": "node scripts/e2e-forca.mjs && node scripts/e2e-galo.mjs && node scripts/e2e-new.mjs",
+    "e2e:new": "node scripts/e2e-new.mjs",
     "e2e:forca": "node scripts/e2e-forca.mjs",
     "e2e:galo": "node scripts/e2e-galo.mjs",
     "sniff": "vite-node scripts/sniff.ts"

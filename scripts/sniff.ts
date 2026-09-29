@@ -6,8 +6,8 @@
  * the same derivation as the application, so it prints the real messages.
  *
  * Usage:
- *   npm run sniff -- <forca|galo> "<room name>" "<room key>" [broker url]
- *   npm run sniff -- <forca|galo>      (no key: topics only, no payloads)
+ *   npm run sniff -- <forca|galo|pontos|naval> "<room name>" "<room key>" [broker url]
+ *   npm run sniff -- <forca|galo|pontos|naval>      (no key: topics only, no payloads)
  */
 
 import mqtt from 'mqtt'
@@ -18,7 +18,7 @@ const DEFAULT_BROKER = 'wss://broker.hivemq.com:8884/mqtt'
 
 const [gameArg, roomName, roomKey, brokerArg] = process.argv.slice(2)
 const brokerUrl = brokerArg ?? DEFAULT_BROKER
-const PROTOCOL = `${gameArg === 'galo' ? 'galo' : 'forca'}/v1`
+const PROTOCOL = `${['galo', 'pontos', 'naval'].includes(gameArg ?? '') ? gameArg : 'forca'}/v1`
 
 const key = roomName && roomKey ? await derive(roomName, roomKey) : null
 const filter = key ? `${topicsFor(PROTOCOL, key.roomId).prefix}/#` : `${PROTOCOL}/#`

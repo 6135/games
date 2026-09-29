@@ -1,7 +1,7 @@
 /** The board. The grid grows with the number of players. */
 
 import type { Player, RoundState } from './types'
-import { seatColor } from './seats'
+import { seatColor } from '../../core/ui/seats'
 
 type Props = {
   round: RoundState

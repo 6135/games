@@ -1,27 +1,24 @@
-/** The galo room: the grid, the turn, the result, and the host settings. */
+/** The pontos room: the board, the turn, the boxes of each player, and the host settings. */
 
 import { RoomShell } from '../../core/ui/RoomShell'
 import { PlayerList } from '../../core/ui/PlayerList'
 import { HostPanel } from '../../core/ui/HostPanel'
+import { BoardHistory } from '../../core/ui/BoardHistory'
 import { gameClient, hostApi } from '../../core/session'
 import { useGameStore, useRoster, useRound } from '../../core/store'
 import { useCues } from '../../core/ui/useCues'
-import { Grid } from './Grid'
-import { History } from './History'
-import { cuesFor } from './cues'
 import { seatColor } from '../../core/ui/seats'
-import { gridSize, MAX_PLAYERS, MIN_PLAYERS } from './rules'
-import { effectiveWinLength, MAX_WIN_LENGTH, MIN_WIN_LENGTH } from './roundReducer'
-import type { GaloClient } from './client'
+import { Board } from './Board'
+import { cuesFor } from './cues'
+import { boardSize, boxCounts, MAX_PLAYERS, MAX_SIZE, MIN_PLAYERS, MIN_SIZE } from './rules'
+import type { PontosClient } from './client'
 import type { RoomState, RoundState } from './types'
 
-export default function GaloRoom() {
+export default function PontosRoom() {
   const identity = useGameStore((state) => state.identity)
   const roster = useRoster<RoomState>()
-  const storedRound = useRound<RoundState>()
+  const stored = useRound<RoundState>()
   const link = useGameStore((state) => state.link)
-
-  // Hooks run before the early return, so the cues survive a slow first state.
   useCues(identity?.playerId ?? '', cuesFor)
 
   if (!identity || !roster) {
@@ -32,28 +29,22 @@ export default function GaloRoom() {
     )
   }
 
-  // A board from another round number is stale and never renders.
   const round =
-    storedRound && storedRound.roundNumber === roster.roundNumber && roster.status !== 'lobby'
-      ? storedRound
-      : null
+    stored && stored.roundNumber === roster.roundNumber && roster.status !== 'lobby' ? stored : null
   const blocked = link !== 'online'
-  const nameOf = (id: string | null) =>
-    roster.players.find((player) => player.id === id)?.name ?? null
-  const seated = roster.order.includes(identity.playerId)
-  const turnName = nameOf(round?.turnPlayerId ?? null)
+  const nameOf = (id: string | null) => roster.players.find((p) => p.id === id)?.name ?? null
   const myTurn = round?.outcome === 'running' && round.turnPlayerId === identity.playerId
-  const connected = roster.players.filter((player) => player.connected).length
-  const size = gridSize(Math.min(connected, MAX_PLAYERS))
-  const winLength = effectiveWinLength(roster.config.winLength, size)
+  const counts = round ? boxCounts(round) : new Map<string, number>()
+  const connected = roster.players.filter((p) => p.connected).length
+  const size = boardSize(roster.config.size, Math.min(connected, MAX_PLAYERS))
 
   return (
     <RoomShell
       identity={identity}
       roster={roster}
-      title="Galo"
-      lobbyHint="A grelha cresce com o número de jogadores."
-      history={(onClose) => <History roster={roster} onClose={onClose} />}
+      title="Pontos e Quadrados"
+      lobbyHint="O tabuleiro cresce com o número de jogadores."
+      history={(onClose) => <BoardHistory history={roster.history} onClose={onClose} />}
       side={
         <>
           <PlayerList
@@ -65,7 +56,7 @@ export default function GaloRoom() {
           />
           {identity.role === 'host' && (
             <HostPanel
-              game="galo"
+              game="pontos"
               roster={roster}
               blocked={blocked}
               minPlayers={MIN_PLAYERS}
@@ -73,28 +64,29 @@ export default function GaloRoom() {
               bots
             >
               <label className="row">
-                Em linha para ganhar
-                <input
-                  type="number"
-                  min={MIN_WIN_LENGTH}
-                  max={MAX_WIN_LENGTH}
-                  value={roster.config.winLength}
-                  onChange={(event) =>
-                    void hostSetConfig({ winLength: Number(event.target.value) })
-                  }
-                />
+                Quadrados por lado
+                <select
+                  value={roster.config.size}
+                  onChange={(event) => void hostApi()?.setConfig({ size: Number(event.target.value) })}
+                >
+                  <option value={0}>automático</option>
+                  {Array.from({ length: MAX_SIZE - MIN_SIZE + 1 }, (_, i) => MIN_SIZE + i).map((n) => (
+                    <option key={n} value={n}>
+                      {n}×{n}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="row">
                 <input
                   type="checkbox"
                   checked={roster.config.onePassLimit}
-                  onChange={(event) => void hostSetConfig({ onePassLimit: event.target.checked })}
+                  onChange={(event) => void hostApi()?.setConfig({ onePassLimit: event.target.checked })}
                 />
                 Uma ronda por jogador
               </label>
               <p className="hint">
-                Com {connected} jogador(es) a grelha é {size}×{size} e ganha quem fizer {winLength}{' '}
-                em linha.
+                Com {connected} jogador(es) o tabuleiro é {size}×{size}.
               </p>
             </HostPanel>
           )}
@@ -102,7 +94,7 @@ export default function GaloRoom() {
       }
     >
       {round && (
-        <section className="card galo-board">
+        <section className="card pontos-board">
           <p className="board__status" aria-live="polite">
             {round.outcome === 'won'
               ? `${nameOf(round.winnerId) ?? '—'} ganhou.`
@@ -110,34 +102,28 @@ export default function GaloRoom() {
                 ? 'Empate.'
                 : myTurn
                   ? 'É a sua vez.'
-                  : `Vez de ${turnName ?? 'ninguém'}.`}
+                  : `Vez de ${nameOf(round.turnPlayerId) ?? 'ninguém'}.`}
           </p>
-          <Grid
+          <Board
             round={round}
             players={roster.players}
             order={roster.order}
-            meId={identity.playerId}
-            canPlay={!blocked && seated && roster.status === 'playing'}
-            onPlay={(cell) => void gameClient<GaloClient>()?.play(cell)}
+            canPlay={!blocked && myTurn && roster.status === 'playing'}
+            onPlay={(line) => void gameClient<PontosClient>()?.play(line)}
           />
           <p className="hint">
-            {round.size}×{round.size} · {round.winLength} em linha para ganhar ·{' '}
-            {round.moves.length} jogada(s)
-            {!seated && ' · está a assistir'}
+            {roster.order
+              .map((id) => `${nameOf(id) ?? '—'} ${counts.get(id) ?? 0}`)
+              .join(' · ')}{' '}
+            · quem fecha um quadrado joga outra vez
           </p>
         </section>
       )}
-
       {roster.status === 'round_end' && roster.lastRound?.voided && (
         <section className="card">
           <h2>Ronda anulada</h2>
-          <p>Ninguém marcou.</p>
         </section>
       )}
     </RoomShell>
   )
-}
-
-function hostSetConfig(patch: Record<string, unknown>): Promise<void> | undefined {
-  return hostApi()?.setConfig(patch)
 }
