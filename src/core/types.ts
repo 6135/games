@@ -1,6 +1,6 @@
 /** Types that every game shares. A game adds its own round state and config. */
 
-export type GameId = 'forca' | 'galo'
+export type GameId = 'forca' | 'galo' | 'pontos' | 'naval'
 
 export type RoomStatus = 'lobby' | 'choosing' | 'playing' | 'round_end' | 'game_over'
 
