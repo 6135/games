@@ -5,6 +5,7 @@
 
 import { HostCore, type HostDeps } from '../../core/host'
 import { seatForRound, shuffle } from '../../core/order'
+import { nameOf } from '../../core/roomRules'
 import { roomReducer, createRoomState, type RoomEvent } from './roomReducer'
 import { applyMove, createRound, skipTurn } from './roundReducer'
 import { gridSize } from './rules'
@@ -102,16 +103,16 @@ export class GaloHost extends HostCore<RoomState, RoomEvent> {
       type: 'round_end',
       winnerId: next.winnerId,
       draw: next.outcome === 'draw',
-      size: next.size,
-      moves: next.moves.length,
-      starterId: this.starterOf(next),
+      detail: this.summary(next),
     })
   }
 
-  private starterOf(round: RoundState): string | null {
+  /** The history line: the grid, the moves and who opened the round. */
+  private summary(round: RoundState): string {
     const first = round.moves[0]
-    if (first !== undefined) return round.cells[first] ?? null
-    return round.turnPlayerId
+    const starterId = first !== undefined ? (round.cells[first] ?? null) : round.turnPlayerId
+    const starter = nameOf(this.state.players, starterId) ?? '—'
+    return `${round.size}×${round.size} · ${round.moves.length} jogada(s) · aberta por ${starter}`
   }
 
   /** Draws the board of the current round number and publishes it. */
@@ -164,12 +165,7 @@ export class GaloHost extends HostCore<RoomState, RoomEvent> {
     const round = this.round
     if (!round || this.state.status !== 'playing') return
     this.cancelGrace()
-    await this.dispatch({
-      type: 'void_round',
-      size: round.size,
-      moves: round.moves.length,
-      starterId: this.starterOf(round),
-    })
+    await this.dispatch({ type: 'void_round', detail: this.summary(round) })
   }
 
   private startGrace(): void {
